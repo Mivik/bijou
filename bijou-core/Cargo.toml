@@ -2,6 +2,12 @@
 name = "bijou-core"
 version = "0.1.0"
 edition = "2021"
+authors = ["Mivik <mivikq@gmail.com>"]
+description = "Bijou is a tiny yet fast encrypted file system."
+readme = "README.md"
+keywords = ["crypto", "fuse", "filesystem", "storage", "security"]
+categories = ["cryptography", "filesystem"]
+license = "MIT"
 
 [lib]
 
