@@ -141,7 +141,7 @@ impl Bijou {
 
         let salt = pwhash::gen_salt();
         let mut key = [0; aead::KEYBYTES];
-        pwhash::derive_key_interactive(&mut key, &password, &salt).map_err(crypto_error)?;
+        pwhash::derive_key_sensitive(&mut key, &password, &salt).map_err(crypto_error)?;
         drop(password);
 
         let key = aead::Key(key);
@@ -207,7 +207,7 @@ impl Bijou {
         }
 
         let mut key = [0; aead::KEYBYTES];
-        pwhash::derive_key_interactive(&mut key, &password, cast_key(&keystore.salt))
+        pwhash::derive_key_sensitive(&mut key, &password, cast_key(&keystore.salt))
             .map_err(crypto_error)?;
 
         let mut master_key: SecretBytes = SecretBytes::move_from(&mut keystore.master_key);
