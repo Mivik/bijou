@@ -107,5 +107,6 @@ impl Drop for Key {
     fn drop(&mut self) {
         // ring does not zero out memory automatically
         // so we have to do that on our own.
+        *self.0 = LessSafeKey::new(UnboundKey::new(self.0.algorithm(), &[0; 32]).unwrap());
     }
 }
