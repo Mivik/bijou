@@ -159,6 +159,8 @@ impl LocalFile {
 #[cfg(unix)]
 impl RawFile for LocalFile {
     fn read_block(&self, data: &mut [u8], block: u64) -> Result<u64> {
+        #[allow(clippy::needless_borrow)]
+        #[allow(clippy::unnecessary_mut_passed)]
         Ok(
             Self::read_at(&mut self.get_file(), data, block * data.len() as u64)
                 .context("failed to read from local file")
@@ -171,6 +173,8 @@ impl RawFile for LocalFile {
         let mut offset = block * data.len() as u64;
         let mut data = &data[..block_end];
         while !data.is_empty() {
+            #[allow(clippy::needless_borrow)]
+            #[allow(clippy::unnecessary_mut_passed)]
             match Self::write_at(&mut file, data, offset) {
                 Ok(0) => {
                     bail!(@IOError "failed to write whole buffer");

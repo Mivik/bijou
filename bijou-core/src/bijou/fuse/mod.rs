@@ -196,9 +196,9 @@ impl BijouFuse {
                 let id = shared.get_id(parent);
                 bijou
                     .make_node(id, &name, kind, symlink, Some(perms))
-                    .and_then(|meta| {
+                    .map(|meta| {
                         shared.table.write().unwrap().add(meta.id);
-                        Ok(meta)
+                        meta
                     })
             };
             match result {
