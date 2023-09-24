@@ -118,7 +118,7 @@ impl BijouFs {
         let mut file = File::open(self, path.as_ref())?;
         let size = file.metadata().map_or(0, |m| m.size as usize);
         let mut bytes = Vec::with_capacity(size);
-        file.read_exact(&mut bytes)
+        file.read_to_end(&mut bytes)
             .context("failed to read buffer")
             .kind(ErrorKind::IOError)?;
         Ok(bytes)
