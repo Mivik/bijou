@@ -115,7 +115,15 @@ fn main() -> Result<()> {
             let password = rpassword::prompt_password("Enter password: ")?;
             let bijou = Arc::new(Bijou::open(path, password.into_bytes())?);
             let fuse = BijouFuse::new(bijou);
-            fuse.mount(mountpoint)?;
+            let mut unmounter = fuse.mount(mountpoint)?;
+            ctrlc::set_handler(move || {
+                unmounter.unmount().expect("failed to unmount");
+                std::process::exit(0);
+            })?;
+
+            loop {
+                std::thread::park();
+            }
         }
         Command::Tree { path } => {
             let password = rpassword::prompt_password("Enter password: ")?;

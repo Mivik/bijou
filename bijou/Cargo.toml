@@ -13,6 +13,7 @@ license = "MIT"
 anyhow = "1.0.75"
 bijou-core = { path = "../bijou-core", features = ["fuse"] }
 clap = { version = "4.4.4", features = ["derive"] }
+ctrlc = "3.4.1"
 rpassword = "7.2.0"
 serde_json = "1.0.107"
 tracing = "0.1.37"

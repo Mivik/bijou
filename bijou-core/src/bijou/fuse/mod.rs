@@ -25,7 +25,7 @@ use crate::{
 use chrono::{DateTime, Utc};
 use fuser::{
     consts::{FOPEN_DIRECT_IO, FOPEN_KEEP_CACHE},
-    mount2, FileAttr, Filesystem, MountOption, Request, TimeOrNow,
+    FileAttr, Filesystem, MountOption, Request, Session, SessionUnmounter, TimeOrNow,
 };
 use inode_table::InodeTable;
 use std::{
@@ -36,7 +36,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 use threadpool::ThreadPool;
-use tracing::info;
+use tracing::{error, info};
 
 const TTL: Duration = Duration::from_secs(1);
 
@@ -145,7 +145,7 @@ fn to_perms(req: &Request, mode: u32) -> UnixPerms {
     }
 }
 
-/// A Fuse wrapper for Bijou.
+/// A FUSE wrapper for Bijou.
 pub struct BijouFuse {
     bijou: Arc<Bijou>,
     shared: Arc<Shared>,
@@ -238,23 +238,30 @@ impl BijouFuse {
         }
     }
 
-    /// Mounts the Bijou at the given mountpoint.
-    pub fn mount(self, mount_point: impl AsRef<std::path::Path>) -> Result<()> {
+    /// Mounts the Bijou at the given mountpoint. Returns a `SessionUnmounter`
+    /// that can be used to unmount the filesystem.
+    ///
+    /// This method does not block.
+    pub fn mount(self, mount_point: impl AsRef<std::path::Path>) -> Result<SessionUnmounter> {
         let mountpoint = mount_point.as_ref();
         info!("mounting Bijou at {}", mountpoint.display());
-        mount2(
+        let mut session = Session::new(
             self,
             mountpoint,
             &[
-                MountOption::AutoUnmount,
                 MountOption::FSName("bijou".to_owned()),
-                MountOption::AllowOther,
                 MountOption::DefaultPermissions,
             ],
         )
-        .context("failed to mount Fuse filesystem")?;
+        .context("failed to create FUSE session")?;
+        let unmounter = session.unmount_callable();
+        std::thread::spawn(move || {
+            if let Err(err) = session.run() {
+                error!("failed to mount FUSE filesystem: {err:?}");
+            }
+        });
 
-        Ok(())
+        Ok(unmounter)
     }
 }
 
