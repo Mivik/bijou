@@ -29,7 +29,7 @@ Currently Bijou is only tested on Linux, but it should work on other platforms a
 
 The following benchmark is done on a 14-core Intel i7-12700H CPU with 32GB RAM and a 1T NVMe SSD.
 
-|                | Baseline |      Bijou     |    [gocryptfs](https://github.com/rfjakob/gocryptfs)   | [Cryptomator](https://cryptomator.org) | [securefs](https://github.com/netheril96/securefs) |  [encfs](https://github.com/vgough/encfs)[^1]  |
+|                | Baseline |      Bijou     |    [gocryptfs](https://github.com/rfjakob/gocryptfs)   | [Cryptomator](https://cryptomator.org) | [securefs](https://github.com/netheril96/securefs)[^1] |  [encfs](https://github.com/vgough/encfs)  |
 |:----------------:|:---------------:|:-----------------:|:--------------:|:------------:|:----------------:|:-----------:|
 |  Tested Version  |       N/A       |   commit 823bf69  | commit 8b1c4b0 |    v1.9.3    |      v0.14.3     |    v1.9.5   |
 |     Seq Read     |     1748MB/s    |      1134MB/s     |     655MB/s    |   1084MB/s   |      643MB/s     |   342MB/s   |
@@ -39,7 +39,7 @@ The following benchmark is done on a 14-core Intel i7-12700H CPU with 32GB RAM a
 |  untar linux-3.0 |   1.7s ± 0.03s  |    7.3s ± 2.4s    |   7.1s ± 0.3s  | 12.7s ± 0.5s |    5.1s ± 0.4s   | 7.8s ± 0.3s |
 | ls -lR linux-3.0 | 115.7ms ± 2.4ms | 263.4ms ± 243.7ms |  1.3s ± 0.06s  |  2.4s ± 0.3s | 220.3ms ± 17.8ms | 2.0s ± 0.2s |
 
-[^1]: encfs does not support O_DIRECT flag
+[^1]: securefs does not support O_DIRECT flag
 
 Bijou might be slower in cases where directory structure or file metadata is frequently accessed since they are stored in a separate database. However, Bijou still outperforms other filesystems in most cases.
 
