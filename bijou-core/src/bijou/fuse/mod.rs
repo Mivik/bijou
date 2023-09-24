@@ -242,18 +242,20 @@ impl BijouFuse {
     /// that can be used to unmount the filesystem.
     ///
     /// This method does not block.
-    pub fn mount(self, mount_point: impl AsRef<std::path::Path>) -> Result<SessionUnmounter> {
+    pub fn mount(
+        self,
+        mount_point: impl AsRef<std::path::Path>,
+        options: &[MountOption],
+    ) -> Result<SessionUnmounter> {
         let mountpoint = mount_point.as_ref();
         info!("mounting Bijou at {}", mountpoint.display());
-        let mut session = Session::new(
-            self,
-            mountpoint,
-            &[
-                MountOption::FSName("bijou".to_owned()),
-                MountOption::DefaultPermissions,
-            ],
-        )
-        .context("failed to create FUSE session")?;
+        let mut options = options.to_vec();
+        options.extend_from_slice(&[
+            MountOption::FSName("bijou".to_owned()),
+            MountOption::DefaultPermissions,
+        ]);
+        let mut session =
+            Session::new(self, mountpoint, &options).context("failed to create FUSE session")?;
         let unmounter = session.unmount_callable();
         std::thread::spawn(move || {
             if let Err(err) = session.run() {

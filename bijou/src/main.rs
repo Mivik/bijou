@@ -14,7 +14,7 @@
 //
 
 use anyhow::{Context, Result};
-use bijou_core::{Bijou, BijouFuse, Config, FileId, FileKind};
+use bijou_core::{Bijou, BijouFuse, Config, FileId, FileKind, MountOption};
 use clap::{error::ErrorKind, CommandFactory, Parser, Subcommand};
 use std::{fs::File, path::PathBuf, sync::Arc};
 use tracing::info;
@@ -47,6 +47,10 @@ enum Command {
 
         /// mount point
         mount_point: PathBuf,
+
+        /// allow other users to access the mount point
+        #[arg(long)]
+        allow_other: bool,
     },
 
     /// Print the file tree of a Bijou
@@ -111,11 +115,16 @@ fn main() -> Result<()> {
         Command::Mount {
             path,
             mount_point: mountpoint,
+            allow_other,
         } => {
             let password = rpassword::prompt_password("Enter password: ")?;
             let bijou = Arc::new(Bijou::open(path, password.into_bytes())?);
             let fuse = BijouFuse::new(bijou);
-            let mut unmounter = fuse.mount(mountpoint)?;
+            let mut options = Vec::new();
+            if allow_other {
+                options.push(MountOption::AllowOther);
+            }
+            let mut unmounter = fuse.mount(mountpoint, &options)?;
             ctrlc::set_handler(move || {
                 unmounter.unmount().expect("failed to unmount");
                 std::process::exit(0);

@@ -36,6 +36,8 @@ pub use secret::SecretBytes;
 
 #[cfg(feature = "fuse")]
 pub use bijou::BijouFuse;
+#[cfg(feature = "fuse")]
+pub use fuser::MountOption;
 
 /// Initialize Bijou.
 ///
