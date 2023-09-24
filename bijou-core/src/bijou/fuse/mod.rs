@@ -394,6 +394,7 @@ impl Filesystem for BijouFuse {
     }
 
     fn unlink(&mut self, _req: &Request, parent: u64, name: &OsStr, reply: fuser::ReplyEmpty) {
+        let _span = begin_span("unlink");
         let bijou = &self.bijou;
         let name = name.to_string_lossy();
         match bijou.unlink(self.shared.get_id(parent), &name) {

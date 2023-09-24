@@ -42,9 +42,6 @@ pub mod consts {
 
     pub const XATTR_DERIVE: &[u8] = b"x";
     pub const XATTR_DERIVE_UPPER: &[u8] = b"y";
-
-    pub const GC_ROOT: &[u8] = b"g";
-    pub const GC_ROOT_UPPER: &[u8] = b"h";
 }
 
 mod cipher {

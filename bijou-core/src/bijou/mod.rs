@@ -52,14 +52,9 @@ use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::{aead, kdf, pwhash};
 use std::{
     path::{Path as StdPath, PathBuf as StdPathBuf},
-    sync::{
-        atomic::{AtomicU32, Ordering},
-        Arc, Condvar, Mutex,
-    },
-    thread::JoinHandle,
-    time::Duration,
+    sync::{atomic::AtomicU32, Arc},
 };
-use tracing::{debug, error, info, trace, warn};
+use tracing::{info, trace};
 
 pub const SYMBOLIC_MAX_DEPTH: u32 = 40;
 
@@ -109,15 +104,10 @@ pub struct Bijou {
     /// If the file doesn't have opened handles anymore, the GC thread
     /// will remove it.
     file_open_counts: Arc<DashMap<FileId, Arc<AtomicU32>>>,
-
-    /// Used to terminate the GC thread.
-    gc_thread_cvar: Arc<(Mutex<bool>, Condvar)>,
-    gc_thread: Option<JoinHandle<()>>,
 }
 
 impl Bijou {
     const KDF_CTX: [u8; 8] = *b"@bijoufs";
-    const GC_CHECK_INTERVAL: Duration = Duration::from_secs(10);
 
     /// Create a new Bijou.
     ///
@@ -296,78 +286,6 @@ impl Bijou {
 
         let file_open_counts = Arc::new(DashMap::<FileId, Arc<AtomicU32>>::new());
 
-        let gc_thread_cvar = Arc::new((Mutex::new(false), Condvar::new()));
-        let gc_thread = std::thread::spawn({
-            let db = Arc::clone(&db);
-            let raw_fs = Arc::clone(&raw_fs);
-            let file_open_counts = Arc::clone(&file_open_counts);
-            let pair = Arc::clone(&gc_thread_cvar);
-            move || loop {
-                let (lock, cvar) = &*pair;
-                let guard = lock.lock().unwrap();
-                let guard = cvar
-                    .wait_timeout_while(guard, Self::GC_CHECK_INTERVAL, |&mut aborted| !aborted)
-                    .unwrap();
-                if *guard.0 {
-                    return;
-                }
-                drop(guard);
-
-                let root_key = db.key([]);
-                let iter = root_key.range_iter(consts::GC_ROOT, consts::GC_ROOT_UPPER);
-                for item in iter {
-                    let item = match item {
-                        Ok(item) => item,
-                        Err(error) => {
-                            warn!(?error, "failed to iterate gc pool");
-                            continue;
-                        }
-                    };
-                    let id = FileId::from_bytes(&item.0[1..]);
-                    if file_open_counts
-                        .get(&id)
-                        .map_or(true, |it| it.load(Ordering::Relaxed) == 0)
-                    {
-                        debug!(file = %id, "deleting file");
-
-                        let mut batch = db.batch();
-
-                        let key = db.key(consts::FILE_ROOT).derive(id).typed::<FileMeta>();
-                        let meta = match key.get().and_then(|it| it.kind(ErrorKind::NotFound)) {
-                            Ok(meta) => meta,
-                            Err(error) => {
-                                error!(file = %id, ?error, "failed to get file meta");
-                                continue;
-                            }
-                        };
-
-                        key.delete_batch(&mut batch);
-                        if meta.kind == FileKind::Symlink {
-                            key.clone()
-                                .derive(consts::SYMLINK_DERIVE)
-                                .delete_batch(&mut batch);
-                        }
-
-                        if meta.kind == FileKind::File {
-                            if let Err(error) = raw_fs.unlink(id) {
-                                error!(file = %id, ?error, "failed to unlink file");
-                            }
-                        }
-
-                        db.key(item.0).delete_batch(&mut batch);
-
-                        batch.delete_range(
-                            key.clone().derive(consts::XATTR_DERIVE).key,
-                            key.derive(consts::XATTR_DERIVE_UPPER).key,
-                        );
-                        if let Err(error) = batch.commit() {
-                            error!(file = %id, ?error, "failed to delete file meta");
-                        }
-                    }
-                }
-            }
-        });
-
         let mut result = Self {
             path,
 
@@ -382,9 +300,6 @@ impl Bijou {
 
             file_lock,
             file_open_counts,
-
-            gc_thread_cvar,
-            gc_thread: Some(gc_thread),
         };
         result.init()?;
         Ok(result)
@@ -889,13 +804,24 @@ impl Bijou {
             // If it reaches zero, we put it into the GC pool.
             assert!(meta.nlinks > 0);
             meta.nlinks -= 1;
-            key.put_batch(batch, &meta)?;
 
             if meta.nlinks == 0 {
-                self.db
-                    .key(consts::GC_ROOT)
-                    .derive(meta.id)
-                    .write_batch(batch, []);
+                key.delete_batch(batch);
+                // batch.delete_range(
+                // key.clone().derive(consts::XATTR_DERIVE).key,
+                // key.clone().derive(consts::XATTR_DERIVE_UPPER).key,
+                // );
+                for item in key.range_iter(consts::XATTR_DERIVE, consts::XATTR_DERIVE_UPPER) {
+                    let item = item.wrap()?;
+                    batch.delete(&item.0);
+                }
+                if meta.kind == FileKind::Symlink {
+                    key.derive(consts::SYMLINK_DERIVE).delete_batch(batch);
+                } else {
+                    self.raw_fs.unlink(child)?;
+                }
+            } else {
+                key.put_batch(batch, &meta)?;
             }
         }
 
@@ -910,8 +836,7 @@ impl Bijou {
         let parent_lock = self.file_lock.get(parent);
         let _guard = parent_lock.write().unwrap();
 
-        let db = Arc::clone(&self.db);
-        let mut batch = db.batch();
+        let mut batch = self.db.batch();
         let removed = self.unlink_inner(&mut batch, parent, name)?;
         batch.commit()?;
 
@@ -947,8 +872,7 @@ impl Bijou {
             Some(new_parent_lock.write().unwrap())
         };
 
-        let db = Arc::clone(&self.db);
-        let mut batch = db.batch();
+        let mut batch = self.db.batch();
 
         let old_child_dir_key = self.child_key(parent_key.clone(), name)?;
         let new_child_dir_key = self.child_key(new_parent_key.clone(), new_name)?;
@@ -1147,20 +1071,5 @@ impl Iterator for DirIterator<'_> {
                 postcard::from_bytes(&value).wrap()?,
             ))
         })
-    }
-}
-
-impl Drop for Bijou {
-    fn drop(&mut self) {
-        // Terminate the GC thread.
-        let (lock, cvar) = &*self.gc_thread_cvar;
-        let mut guard = lock.lock().unwrap();
-        *guard = true;
-        cvar.notify_one();
-        drop(guard);
-
-        if let Some(thread) = self.gc_thread.take() {
-            thread.join().unwrap();
-        }
     }
 }
