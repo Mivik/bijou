@@ -148,6 +148,7 @@ impl FileStorage {
 ///
 /// [`Bijou::create`]: crate::Bijou::create
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Config {
     /// The version of the configuration.
     ///
@@ -177,6 +178,16 @@ pub struct Config {
 
     /// File storage type. See [`FileStorage`] for more details.
     pub storage: FileStorage,
+
+    /// Whether to disable `getxattr` operations.
+    ///
+    /// xattrs can cause significant performance degration
+    /// when file access is frequent. If you don't need them,
+    /// consider disabling them.
+    ///
+    /// This will only disable `getxattr` calls. `setxattr` and
+    /// `listxattr` calls will still work.
+    pub disable_xattr_gets: bool,
 }
 
 impl Default for Config {
@@ -193,6 +204,8 @@ impl Default for Config {
             unix_perms: true,
 
             storage: FileStorage::Local,
+
+            disable_xattr_gets: true,
         }
     }
 }

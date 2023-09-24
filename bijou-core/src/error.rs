@@ -277,6 +277,8 @@ pub enum ErrorKind {
 
     IncompatibleVersion,
 
+    Unsupported,
+
     AlreadyExists,
     BadFileDescriptor,
     InvalidInput,
@@ -298,6 +300,8 @@ impl ErrorKind {
 
             IncompatibleVersion => libc::EIO,
 
+            Unsupported => libc::ENOSYS,
+
             AlreadyExists => libc::EEXIST,
             BadFileDescriptor => libc::EBADF,
             InvalidInput => libc::EINVAL,
@@ -315,6 +319,8 @@ impl From<ErrorKind> for io::ErrorKind {
         use ErrorKind as E;
         match value {
             E::IncompatibleVersion => T::Unsupported,
+
+            E::Unsupported => T::Unsupported,
 
             E::AlreadyExists => T::AlreadyExists,
             E::InvalidInput => T::InvalidInput,
