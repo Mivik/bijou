@@ -47,6 +47,10 @@ Bijou might be slower in cases where directory structure or file metadata is fre
 
 See [security](docs/security.md) and [design](docs/design.md) for more information.
 
+## Get Involved
+
+Bijou is still in its early stage, and there are many things to do. If you're interested in this project, check out [CONTRIBUTING.md](CONTRIBUTING.md). Any contribution is welcome!
+
 ## Installation
 
 ```bash
