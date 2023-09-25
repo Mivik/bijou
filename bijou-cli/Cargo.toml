@@ -1,13 +1,14 @@
 [package]
 name = "bijou-cli"
-version = "0.1.0"
-edition = "2021"
-authors = ["Mivik <mivikq@gmail.com>"]
-description = "Bijou is a tiny yet fast encrypted file system."
-readme = "README.md"
-keywords = ["crypto", "fuse", "filesystem", "storage", "security"]
-categories = ["cryptography", "filesystem"]
-license = "MIT"
+
+authors.workspace = true
+description.workspace = true
+keywords.workspace = true
+categories.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
 
 [[bin]]
 name = "bijou"

@@ -2,6 +2,16 @@
 members = ["bijou", "bijou-cli"]
 resolver = "2"
 
+[workspace.package]
+authors = ["Mivik <mivikq@gmail.com>"]
+description = "Bijou is a tiny yet fast encrypted file system."
+keywords = ["crypto", "fuse", "filesystem", "storage", "security"]
+categories = ["cryptography", "filesystem"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/Mivik/bijou"
+version = "0.1.0"
+
 [profile.release]
 opt-level = 2
 debug = 1
