@@ -1,5 +1,5 @@
 [workspace]
-members = ["bijou-core", "bijou"]
+members = ["bijou", "bijou-cli"]
 resolver = "2"
 
 [profile.release]

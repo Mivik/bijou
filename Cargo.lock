@@ -175,21 +175,6 @@ name = "bijou"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bijou-core",
- "clap",
- "ctrlc",
- "rpassword",
- "serde_json",
- "tracing",
- "tracing-log",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "bijou-core"
-version = "0.1.0"
-dependencies = [
- "anyhow",
  "base64",
  "chrono",
  "dashmap",
@@ -207,6 +192,21 @@ dependencies = [
  "threadpool",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "bijou-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bijou",
+ "clap",
+ "ctrlc",
+ "rpassword",
+ "serde_json",
+ "tracing",
+ "tracing-log",
+ "tracing-subscriber",
 ]
 
 [[package]]

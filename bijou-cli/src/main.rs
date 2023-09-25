@@ -14,7 +14,7 @@
 //
 
 use anyhow::{Context, Result};
-use bijou_core::{Bijou, Config, FileId, FileKind};
+use bijou::{Bijou, Config, FileId, FileKind};
 use clap::{error::ErrorKind, CommandFactory, Parser, Subcommand};
 use std::{fs::File, path::PathBuf, sync::Arc};
 use tracing::info;
@@ -89,7 +89,7 @@ fn main() -> Result<()> {
     tracing::subscriber::set_global_default(subscriber)
         .expect("Failed to set global default subscriber");
 
-    bijou_core::init()?;
+    bijou::init()?;
 
     let args = Args::parse();
 
@@ -121,10 +121,10 @@ fn main() -> Result<()> {
         } => {
             let password = rpassword::prompt_password("Enter password: ")?;
             let bijou = Arc::new(Bijou::open(path, password.into_bytes())?);
-            let fuse = bijou_core::BijouFuse::new(bijou);
+            let fuse = bijou::BijouFuse::new(bijou);
             let mut options = Vec::new();
             if allow_other {
-                options.push(bijou_core::MountOption::AllowOther);
+                options.push(bijou::MountOption::AllowOther);
             }
             let mut unmounter = fuse.mount(mountpoint, &options)?;
             ctrlc::set_handler(move || {
