@@ -49,7 +49,7 @@ use rocksdb::{
     ReadOptions, SingleThreaded, WriteBatch,
 };
 use serde::{Deserialize, Serialize};
-use sodiumoxide::crypto::{aead, kdf, pwhash};
+use sodiumoxide::crypto::{aead, kdf, pwhash::argon2id13 as pwhash};
 use std::{
     path::{Path as StdPath, PathBuf as StdPathBuf},
     sync::{atomic::AtomicU32, Arc},
@@ -146,7 +146,14 @@ impl Bijou {
 
         let salt = pwhash::gen_salt();
         let mut key = [0; aead::KEYBYTES];
-        pwhash::derive_key_sensitive(&mut key, &password, &salt).map_err(crypto_error)?;
+        pwhash::derive_key(
+            &mut key,
+            &password,
+            &salt,
+            pwhash::OPSLIMIT_MODERATE,
+            pwhash::MEMLIMIT_MODERATE,
+        )
+        .map_err(crypto_error)?;
         drop(password);
 
         let key = aead::Key(key);
@@ -212,8 +219,14 @@ impl Bijou {
         }
 
         let mut key = [0; aead::KEYBYTES];
-        pwhash::derive_key_sensitive(&mut key, &password, cast_key(&keystore.salt))
-            .map_err(crypto_error)?;
+        pwhash::derive_key(
+            &mut key,
+            &password,
+            cast_key(&keystore.salt),
+            pwhash::OPSLIMIT_MODERATE,
+            pwhash::MEMLIMIT_MODERATE,
+        )
+        .map_err(crypto_error)?;
 
         let mut master_key: SecretBytes = SecretBytes::move_from(&mut keystore.master_key);
         aead::open_detached(
