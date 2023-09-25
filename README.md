@@ -1,4 +1,4 @@
-# Bijou
+# Bijou ✨💎✨
 
 Bijou (['bi:ʒu], French for "jewel") is a tiny yet fast encrypted filesystem, built upon [RocksDB](https://github.com/facebook/rocksdb).
 
@@ -8,7 +8,7 @@ Bijou provides a FUSE interface, as well as Rust API (`bijou-core`) to manipulat
 
 The initial motivation of Bijou is to provide access to encrypted filesystem everywhere, without extra requirement for the host system. Most of currently available encrypted filesystems just rely on the underlying filesystem to do the most of the work (directory structure, filenames, metadata, xattrs, etc.), which both limits the portability and compromises the security.
 
-Bijou is developed with safety and performance in mind. Almost all metadata is stored in a RocksDB database, which is patched to support at-rest encryption. Because of that, Bijou poses no extra requirement on the underlying filesystem. An abstraction of the storage layer makes it possible to store file contents nearly everywhere, including local file system, OpenDAL (experimental) or even RocksDB itself.
+Bijou is developed with safety and performance in mind. Almost all metadata is stored in a RocksDB database, which is patched to support at-rest encryption. Because of that, Bijou poses minimum requirement on the underlying filesystem. In addition, an abstraction of the storage layer makes it possible to store file contents nearly everywhere, including local file system, OpenDAL (experimental) or even RocksDB itself.
 
 ## **Warning**
 
@@ -39,7 +39,7 @@ The following benchmark is done on a 14-core Intel i7-12700H CPU with 32GB RAM a
 |  untar linux-3.0 |   1.7s ± 0.03s  |    7.3s ± 2.4s    |   7.1s ± 0.3s  | 12.7s ± 0.5s |    5.1s ± 0.4s   | 7.8s ± 0.3s |
 | ls -lR linux-3.0 | 115.7ms ± 2.4ms | 263.4ms ± 243.7ms |  1.3s ± 0.06s  |  2.4s ± 0.3s | 220.3ms ± 17.8ms | 2.0s ± 0.2s |
 
-[^1]: securefs does not support O_DIRECT flag
+[^1]: securefs does not support O_DIRECT flag, and is tested without it
 
 Bijou might be slower in cases where directory structure or file metadata is frequently accessed since they are stored in a separate database. However, Bijou still outperforms other filesystems in most cases.
 

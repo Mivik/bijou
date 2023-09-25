@@ -12,7 +12,7 @@ Each file in Bijou is identified by a unique `FileId` (currently 64-bit unsigned
 
 ## `RawFileSystem`
 
-`RawFileSystem` is the abstraction of the underlying storage. It does not account for encryption, filenames, directory structure, etc. It just simply stores file contents and metadata by `FileId`. Bijou requires `RawFileMeta` to be stored for each file, which contains three fields: file size, modification time and access time.
+`RawFileSystem` is the abstraction of the underlying storage. It does not account for encryption, filenames, directory structure, etc. It just simply stores file contents by `FileId`. In addition, Bijou requires `RawFileMeta` to be stored for each file, which contains three fields: file size, modification time and access time.
 
 Here lists some implementations:
 
