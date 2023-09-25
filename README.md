@@ -43,6 +43,10 @@ The following benchmark is done on a 14-core Intel i7-12700H CPU with 32GB RAM a
 
 Bijou might be slower in cases where directory structure or file metadata is frequently accessed since they are stored in a separate database. However, Bijou still outperforms other filesystems in most cases.
 
+## Security & Design
+
+See [security](docs/security.md) and [design](docs/design.md) for more information.
+
 ## Installation
 
 ```bash
