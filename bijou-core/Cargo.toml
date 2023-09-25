@@ -25,7 +25,7 @@ rocksdb = { git = "https://github.com/Mivik/rust-rocksdb" }
 serde = { version = "1.0.188", features = ["derive"] }
 serde_json = "1.0.106"
 smallvec = "1.11.0"
-sodiumoxide = "0.2.7"
+sodiumoxide = { git = "https://github.com/Mivik/sodiumoxide" }
 threadpool = "1.8.1"
 tracing = "0.1.37"
 uuid = { version = "1.4.1", features = ["v4", "serde"] }

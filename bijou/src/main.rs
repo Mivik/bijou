@@ -14,7 +14,7 @@
 //
 
 use anyhow::{Context, Result};
-use bijou_core::{Bijou, BijouFuse, Config, FileId, FileKind, MountOption};
+use bijou_core::{Bijou, Config, FileId, FileKind};
 use clap::{error::ErrorKind, CommandFactory, Parser, Subcommand};
 use std::{fs::File, path::PathBuf, sync::Arc};
 use tracing::info;
@@ -40,6 +40,7 @@ enum Command {
         config: Option<PathBuf>,
     },
 
+    #[cfg(not(windows))]
     /// Mount a Bijou
     Mount {
         /// the path to the Bijou
@@ -112,6 +113,7 @@ fn main() -> Result<()> {
 
             info!("Bijou created at {}", path.display());
         }
+        #[cfg(not(windows))]
         Command::Mount {
             path,
             mount_point: mountpoint,
@@ -119,10 +121,10 @@ fn main() -> Result<()> {
         } => {
             let password = rpassword::prompt_password("Enter password: ")?;
             let bijou = Arc::new(Bijou::open(path, password.into_bytes())?);
-            let fuse = BijouFuse::new(bijou);
+            let fuse = bijou_core::BijouFuse::new(bijou);
             let mut options = Vec::new();
             if allow_other {
-                options.push(MountOption::AllowOther);
+                options.push(bijou_core::MountOption::AllowOther);
             }
             let mut unmounter = fuse.mount(mountpoint, &options)?;
             ctrlc::set_handler(move || {

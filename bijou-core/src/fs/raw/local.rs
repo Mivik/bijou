@@ -156,7 +156,6 @@ impl LocalFile {
     }
 }
 
-#[cfg(unix)]
 impl RawFile for LocalFile {
     fn read_block(&self, data: &mut [u8], block: u64) -> Result<u64> {
         #[allow(clippy::needless_borrow)]
