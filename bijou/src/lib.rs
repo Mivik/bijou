@@ -23,6 +23,7 @@ mod fs;
 mod id_lock;
 mod secret;
 mod serde_ext;
+mod sodium;
 
 pub(crate) use error::{anyhow, bail, Context};
 
@@ -33,6 +34,7 @@ pub use fs::{
     path, raw as raw_fs, FileId, FileKind, FileMeta, LowLevelFile, OpenOptions,
 };
 pub use secret::SecretBytes;
+pub use sodium::pwhash::Limit;
 
 #[cfg(feature = "fuse")]
 pub use bijou::BijouFuse;
@@ -43,7 +45,11 @@ pub use fuser::MountOption;
 ///
 /// Should be called before any use of this library.
 pub fn init() -> Result<()> {
-    sodiumoxide::init().map_err(|_| anyhow!(@CryptoError "failed to initialize libsodium"))?;
+    unsafe {
+        if libsodium_sys::sodium_init() != 0 {
+            bail!(@CryptoError "failed to initialize libsodium");
+        }
+    }
     Ok(())
 }
 

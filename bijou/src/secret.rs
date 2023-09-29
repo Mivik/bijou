@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-use sodiumoxide::utils;
+use crate::sodium::utils;
 use std::ops::{Deref, DerefMut};
 
 /// A wrapper around a byte array that is locked in memory
@@ -56,15 +56,15 @@ impl SecretBytes {
     }
 }
 
-impl From<Vec<u8>> for SecretBytes {
-    fn from(bytes: Vec<u8>) -> Self {
-        Self(bytes.into_boxed_slice())
-    }
-}
-
 impl Clone for SecretBytes {
     fn clone(&self) -> Self {
         Self::new(self.0.clone())
+    }
+}
+
+impl From<Vec<u8>> for SecretBytes {
+    fn from(bytes: Vec<u8>) -> Self {
+        Self(bytes.into_boxed_slice())
     }
 }
 

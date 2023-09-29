@@ -15,12 +15,7 @@
 
 //! Translation of <https://github.com/jedisct1/libsodium-xchacha20-siv>, without nonce.
 
-use super::cast_key;
-use crate::Result;
-use sodiumoxide::{
-    crypto::{generichash, stream::xchacha20},
-    utils,
-};
+use crate::{Result, sodium::{generic_hash, stream::XCHACHA20, utils}, error::anyhow};
 
 pub const ABYTES: usize = 32;
 pub const KEYBYTES: usize = 32;
@@ -51,23 +46,17 @@ fn s2v_xor(d: &mut [u8; 32], h: &[u8]) {
     }
 }
 
-fn hash_into(d: &mut [u8], message: &[u8], key: &[u8]) -> Result<(), ()> {
-    let digest = generichash::hash(message, Some(d.len()), Some(key))?;
-    d.copy_from_slice(digest.as_ref());
-    Ok(())
-}
-
-fn s2v(iv: &mut [u8; ABYTES], m: &[u8], ad: &[u8], ka: &[u8; ABYTES]) -> Result<(), ()> {
+fn s2v(iv: &mut [u8; ABYTES], m: &[u8], ad: &[u8], ka: &[u8; ABYTES]) -> Result<()> {
     const ZERO: [u8; ABYTES] = [0; ABYTES];
 
     let mut d = [0; ABYTES];
-    hash_into(&mut d, &ZERO, ka)?;
+    generic_hash::hash(&mut d, &ZERO, Some(ka))?;
 
     s2v_dbl256(&mut d);
-    hash_into(iv, ad, ka)?;
+    generic_hash::hash(iv, ad, Some(ka))?;
     s2v_xor(&mut d, iv);
 
-    let mut state = generichash::State::new(Some(ABYTES), Some(ka))?;
+    let mut state = generic_hash::State::new(ABYTES, Some(ka))?;
 
     if m.len() >= ABYTES {
         state.update(&m[..m.len() - ABYTES])?;
@@ -78,41 +67,42 @@ fn s2v(iv: &mut [u8; ABYTES], m: &[u8], ad: &[u8], ka: &[u8; ABYTES]) -> Result<
         d[m.len()] ^= 0x80;
     }
     state.update(&d)?;
-    iv.copy_from_slice(state.finalize()?.as_ref());
+    state.finalize(iv)?;
 
     Ok(())
 }
 
-fn derive_keys(key: &Key) -> Result<([u8; ABYTES], xchacha20::Key), ()> {
+fn derive_keys(key: &Key) -> Result<([u8; ABYTES], [u8; XCHACHA20.key_len])> {
     let mut ka = [0; 32];
     let mut ke = [0; 32];
-    let digest = generichash::hash(b"", Some(64), Some(&key.0))?;
-    ka.copy_from_slice(&digest.as_ref()[..32]);
-    ke.copy_from_slice(&digest.as_ref()[32..]);
+    let mut result = [0; 64];
+    generic_hash::hash(&mut result, b"", Some(&key.0))?;
+    ka.copy_from_slice(&result[..32]);
+    ke.copy_from_slice(&result[32..]);
 
-    Ok((ka, xchacha20::Key(ke)))
+    Ok((ka, ke))
 }
 
-pub fn encrypt_detached(c: &mut [u8], ad: &[u8], k: &Key) -> Result<Tag, ()> {
+pub fn encrypt_detached(c: &mut [u8], ad: &[u8], k: &Key) -> Result<Tag> {
     let (ka, ke) = derive_keys(k)?;
 
     let mut mac = [0; ABYTES];
     s2v(&mut mac, c, ad, &ka)?;
 
-    xchacha20::stream_xor_inplace(c, cast_key(&mac[..24]), &ke);
+    XCHACHA20.xor_inplace(c, &mac[..24], &ke)?;
 
     Ok(Tag(mac))
 }
 
-pub fn decrypt_inplace(c: &mut [u8], tag: &Tag, ad: &[u8], k: &Key) -> Result<(), ()> {
+pub fn decrypt_inplace(c: &mut [u8], tag: &Tag, ad: &[u8], k: &Key) -> Result<()> {
     let (ka, ke) = derive_keys(k)?;
 
-    xchacha20::stream_xor_inplace(c, cast_key(&tag.0[..24]), &ke);
+    XCHACHA20.xor_inplace(c, &tag.0[..24], &ke)?;
 
     let mut mac2 = [0; ABYTES];
     s2v(&mut mac2, c, ad, &ka)?;
     if !utils::memcmp(&tag.0, &mac2) {
-        return Err(());
+        return Err(anyhow!(@CryptoError "authentication failed"));
     }
 
     Ok(())

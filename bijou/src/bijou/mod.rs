@@ -36,7 +36,14 @@ use crate::{
     },
     id_lock::IdLock,
     path::Path,
-    serde_ext, Context, ErrorKind, FileId, FileMeta, OpenOptions, Result, SecretBytes,
+    serde_ext,
+    sodium::{
+        aead::XCHACHA20_POLY1305_IETF as AEAD,
+        kdf::BLAKE2B as KDF,
+        pwhash::{Limit, ARGON2_ID13 as PWHASH},
+        utils,
+    },
+    Context, ErrorKind, FileId, FileMeta, OpenOptions, Result, SecretBytes,
 };
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
@@ -49,7 +56,6 @@ use rocksdb::{
     ReadOptions, SingleThreaded, WriteBatch,
 };
 use serde::{Deserialize, Serialize};
-use sodiumoxide::crypto::{aead, kdf, pwhash::argon2id13 as pwhash};
 use std::{
     path::{Path as StdPath, PathBuf as StdPathBuf},
     sync::{atomic::AtomicU32, Arc},
@@ -64,14 +70,17 @@ struct KeyStore {
     version: u32,
 
     #[serde(with = "serde_ext::base64")]
-    salt: [u8; pwhash::SALTBYTES],
+    salt: [u8; PWHASH.salt_len],
     #[serde(with = "serde_ext::base64")]
-    nonce: [u8; aead::NONCEBYTES],
+    nonce: [u8; AEAD.nonce_len],
     #[serde(with = "serde_ext::base64")]
-    tag: [u8; aead::TAGBYTES],
+    tag: [u8; AEAD.tag_len],
+
+    ops_limit: usize,
+    mem_limit: usize,
 
     #[serde(with = "serde_ext::base64")]
-    master_key: [u8; kdf::KEYBYTES],
+    master_key: [u8; KDF.key_len],
 }
 
 /// The main Bijou interface providing low level APIs.
@@ -122,6 +131,8 @@ impl Bijou {
         path: impl AsRef<StdPath>,
         password: impl Into<SecretBytes>,
         config: Config,
+        ops_limit: Limit,
+        mem_limit: Limit,
     ) -> Result<()> {
         info!("creating Bijou");
 
@@ -139,35 +150,40 @@ impl Bijou {
         }
 
         // This is not made into SecretBytes because we'll encrypt it inplace later.
-        let mut master_key = kdf::gen_key();
-        let mut config_key = SecretBytes::allocate(aead::KEYBYTES);
-        kdf::derive_from_key(&mut config_key, 0, Self::KDF_CTX, &master_key)
-            .map_err(crypto_error)?;
+        let master_key = KDF.gen_key();
+        let prk = KDF.prk(master_key.clone(), Self::KDF_CTX.as_slice());
+        let config_key = prk.derive(0, AEAD.key_len)?;
 
-        let salt = pwhash::gen_salt();
-        let mut key = [0; aead::KEYBYTES];
-        pwhash::derive_key(
-            &mut key,
-            &password,
-            &salt,
-            pwhash::OPSLIMIT_MODERATE,
-            pwhash::MEMLIMIT_MODERATE,
-        )
-        .map_err(crypto_error)?;
+        let salt = utils::gen_rand_bytes::<{ PWHASH.salt_len }>();
+
+        let mut key = [0; AEAD.key_len];
+        PWHASH.derive_key(&mut key, &password, &salt, ops_limit, mem_limit)?;
         drop(password);
+        let nonce = utils::gen_rand_bytes::<{ AEAD.nonce_len }>();
+        let mut tag = [0; AEAD.tag_len];
 
-        let key = aead::Key(key);
-        let nonce = aead::gen_nonce();
-        let tag = aead::seal_detached(&mut master_key.0, Some(b"bijou"), &nonce, &key);
+        let mut encrypted_master_key = [0; KDF.key_len];
+        AEAD.encrypt(
+            &mut encrypted_master_key,
+            &mut tag,
+            &master_key,
+            Some(b"bijou"),
+            &nonce,
+            &key,
+        )?;
+        drop(master_key);
 
         let keystore = KeyStore {
             version: 0,
 
-            salt: salt.0,
-            nonce: nonce.0,
-            tag: tag.0,
+            salt,
+            nonce,
+            tag,
 
-            master_key: master_key.0,
+            ops_limit: ops_limit.eval(PWHASH.ops_limits),
+            mem_limit: mem_limit.eval(PWHASH.mem_limits),
+
+            master_key: encrypted_master_key,
         };
         (|| {
             serde_json::to_writer_pretty(
@@ -179,14 +195,14 @@ impl Bijou {
         .context("failed to save keystore.json")?;
 
         let mut bytes = serde_json::to_vec(&config).wrap()?;
-        let nonce = aead::gen_nonce();
-        let tag = aead::seal_detached(&mut bytes, None, &nonce, cast_key(&config_key));
+        let nonce = utils::gen_rand_bytes::<{ AEAD.nonce_len }>();
+        let mut tag = [0; AEAD.tag_len];
+        AEAD.encrypt_inplace(&mut bytes, &mut tag, &nonce, None, &config_key)?;
         drop(config_key);
         bytes = nonce
-            .0
             .into_iter()
             .chain(bytes.into_iter())
-            .chain(tag.0.into_iter())
+            .chain(tag.into_iter())
             .collect::<Vec<_>>();
         std::fs::write(path.join("config.json"), bytes).context("failed to save config.json")?;
 
@@ -218,31 +234,28 @@ impl Bijou {
             bail!(@IncompatibleVersion "keystore version {} is not supported", keystore.version);
         }
 
-        let mut key = [0; aead::KEYBYTES];
-        pwhash::derive_key(
+        let mut key = [0; AEAD.key_len];
+        PWHASH.derive_key(
             &mut key,
             &password,
-            cast_key(&keystore.salt),
-            pwhash::OPSLIMIT_MODERATE,
-            pwhash::MEMLIMIT_MODERATE,
-        )
-        .map_err(crypto_error)?;
+            &keystore.salt,
+            Limit::Custom(keystore.ops_limit),
+            Limit::Custom(keystore.mem_limit),
+        )?;
 
         let mut master_key: SecretBytes = SecretBytes::move_from(&mut keystore.master_key);
-        aead::open_detached(
+        AEAD.decrypt_inplace(
             &mut master_key,
+            &keystore.tag,
             Some(b"bijou"),
-            &aead::Tag(keystore.tag),
-            &aead::Nonce(keystore.nonce),
-            &aead::Key(key),
+            &keystore.nonce,
+            &key,
         )
-        .map_err(|_| anyhow!(@CryptoError "incorrect password"))?;
-        let mk: &kdf::Key = cast_key(&master_key);
+        .context("incorrect password")?;
+        let mk = KDF.prk(master_key, Self::KDF_CTX.as_slice());
 
-        let mut config_key = SecretBytes::allocate(aead::KEYBYTES);
-        let mut content_key_bytes = SecretBytes::allocate(hkdf::KeyType::len(&hkdf::HKDF_SHA256));
-        kdf::derive_from_key(&mut config_key, 0, Self::KDF_CTX, mk).map_err(crypto_error)?;
-        kdf::derive_from_key(&mut content_key_bytes, 1, Self::KDF_CTX, mk).map_err(crypto_error)?;
+        let config_key = mk.derive(0, AEAD.key_len)?;
+        let content_key_bytes = mk.derive(1, hkdf::KeyType::len(&hkdf::HKDF_SHA256))?;
 
         let content_key = Prk::new_less_safe(hkdf::HKDF_SHA256, &content_key_bytes);
         drop(content_key_bytes);
@@ -253,36 +266,24 @@ impl Bijou {
         //
         // libsodium uses char* under the hood, which
         // does not require any alignment guarantees.
-        let (nonce, config, tag) =
-            unsafe { split_nonce_tag::<aead::Nonce, aead::Tag>(&mut config) };
-        aead::open_detached(config, None, tag, nonce, cast_key(&config_key))
-            .map_err(crypto_error)?;
+        let (nonce, config, tag) = split_nonce_tag(&mut config, AEAD.nonce_len, AEAD.tag_len);
+        AEAD.decrypt_inplace(config, tag, None, nonce, &config_key)?;
         drop(config_key);
         let config: Config = serde_json::from_slice(config).context("failed to parse config")?;
 
         info!("config: {config:?}");
 
         let file_name_key = if config.encrypt_file_name {
-            Some({
-                let mut key = SecretBytes::allocate(hkdf::KeyType::len(&hkdf::HKDF_SHA256));
-                kdf::derive_from_key(&mut key, 2, Self::KDF_CTX, mk).map_err(crypto_error)?;
-                key
-            })
+            Some(mk.derive(2, hkdf::KeyType::len(&hkdf::HKDF_SHA256))?)
         } else {
             None
         };
 
         let db_key = if config.encrypt_db {
-            Some({
-                let mut key = SecretBytes::allocate(Database::KEYBYTES);
-                kdf::derive_from_key(&mut key, 3, Self::KDF_CTX, mk).map_err(crypto_error)?;
-                key
-            })
+            Some(mk.derive(3, Database::KEYBYTES)?)
         } else {
             None
         };
-
-        drop(master_key);
 
         let data_dir = path.join("data");
         if !data_dir.is_dir() {

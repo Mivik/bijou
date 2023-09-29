@@ -45,32 +45,32 @@ pub mod consts {
 }
 
 mod cipher {
-    use crate::{algo::is_nil, crypto::cast_key, SecretBytes};
-    use sodiumoxide::crypto::stream::*;
+    use crate::{
+        algo::is_nil,
+        sodium::{stream::XSALSA20, utils},
+        SecretBytes,
+    };
 
-    pub const METADATA_SIZE: usize = NONCEBYTES;
+    pub const METADATA_SIZE: usize = XSALSA20.nonce_len;
     pub const BLOCK_SIZE: usize = 4096;
-
-    pub use sodiumoxide::crypto::stream::KEYBYTES;
+    pub const KEYBYTES: usize = XSALSA20.key_len;
 
     pub struct MyCipher(pub SecretBytes);
     impl rocksdb::CustomCipher for MyCipher {
         fn encrypt_block(&self, _block_index: u64, data: &mut [u8], metadata: &mut [u8]) -> bool {
-            let nonce: &mut Nonce = unsafe { &mut *(metadata.as_mut_ptr() as *mut Nonce) };
-            while is_nil(&nonce.0) {
-                *nonce = gen_nonce();
+            while is_nil(metadata) {
+                utils::rand_bytes(metadata);
             }
-            stream_xor_inplace(data, nonce, cast_key(&self.0));
+            XSALSA20.xor_inplace(data, metadata, &self.0).unwrap();
             true
         }
 
         fn decrypt_block(&self, _block_index: u64, data: &mut [u8], metadata: &[u8]) -> bool {
-            let nonce: &Nonce = unsafe { &*(metadata.as_ptr() as *const Nonce) };
-            if is_nil(&nonce.0) {
+            if is_nil(metadata) {
                 data.fill(0);
                 return true;
             }
-            stream_xor_inplace(data, nonce, cast_key(&self.0));
+            XSALSA20.xor_inplace(data, metadata, &self.0).unwrap();
             true
         }
     }
@@ -184,8 +184,7 @@ impl<T> DatabaseKey<T> {
     where
         T: DeserializeOwned,
     {
-        self
-            .read()
+        self.read()
             .kind(ErrorKind::DBError)?
             .map(|bytes| postcard::from_bytes(&bytes))
             .transpose()

@@ -14,7 +14,7 @@
 //
 
 use anyhow::{Context, Result};
-use bijou::{Bijou, Config, FileId, FileKind};
+use bijou::{Bijou, Config, FileId, FileKind, Limit};
 use clap::{error::ErrorKind, CommandFactory, Parser, Subcommand};
 use std::{fs::File, path::PathBuf, sync::Arc};
 use tracing::info;
@@ -109,7 +109,13 @@ fn main() -> Result<()> {
                     .error(ErrorKind::InvalidValue, "Passwords do not match")
                     .exit();
             }
-            Bijou::create(&path, password.into_bytes(), config)?;
+            Bijou::create(
+                &path,
+                password.into_bytes(),
+                config,
+                Limit::Moderate,
+                Limit::Moderate,
+            )?;
 
             info!("Bijou created at {}", path.display());
         }

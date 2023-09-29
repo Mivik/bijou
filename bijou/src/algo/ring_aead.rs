@@ -14,7 +14,7 @@
 //
 
 use super::{is_nil, AlgoKey, Algorithm};
-use crate::{crypto::crypto_error, move_to_heap, Result, SecretBytes};
+use crate::{crypto::crypto_error, move_to_heap, sodium::utils::rand_bytes, Result, SecretBytes};
 use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, MAX_TAG_LEN, NONCE_LEN};
 
 /// General wrapper for ring AEAD algorithms.
@@ -65,9 +65,9 @@ impl AlgoKey for Key {
     fn encrypt(&self, block: u64, buffer: &mut [u8]) -> Result<()> {
         let (nonce, data) = split(buffer);
 
-        sodiumoxide::randombytes::randombytes_into(nonce);
+        rand_bytes(nonce);
         while is_nil(nonce) {
-            sodiumoxide::randombytes::randombytes_into(nonce);
+            rand_bytes(nonce);
         }
 
         let (data, tag_bytes) = data.split_at_mut(data.len() - MAX_TAG_LEN);

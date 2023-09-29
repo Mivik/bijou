@@ -14,7 +14,7 @@
 //
 
 use super::RawFileSystem;
-use crate::{algo::Algorithm, db::Database, Result};
+use crate::{algo::Algorithm, db::Database, Result, sodium};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -224,9 +224,9 @@ impl Config {
                 self.block_size,
             )?),
             FileEncryption::XChaCha20Poly1305IETF => {
-                Arc::new(XChaCha20Poly1305IETF::new(self.block_size))
+                Arc::new(SodiumAead::new(&sodium::aead::XCHACHA20_POLY1305_IETF, self.block_size)?)
             }
-            FileEncryption::XSalsa20 => Arc::new(XSalsa20::new(self.block_size)),
+            FileEncryption::XSalsa20 => Arc::new(SodiumStream::new(&sodium::stream::XSALSA20, self.block_size)?),
         })
     }
 }

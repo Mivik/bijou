@@ -19,7 +19,7 @@ use crate::{
     bail,
     db::DatabaseKey,
     path::Path,
-    Bijou, BijouFs, File, Result,
+    Bijou, BijouFs, File, Result, sodium::utils,
 };
 use std::{
     cell::RefCell,
@@ -300,7 +300,7 @@ impl LowLevelFile {
                 block += 1;
             }
 
-            sodiumoxide::utils::memzero(&mut buffer);
+            utils::memzero(&mut buffer);
 
             // TODO access time
 
@@ -405,7 +405,7 @@ impl LowLevelFile {
                 block += 1;
             }
 
-            sodiumoxide::utils::memzero(&mut buffer);
+            utils::memzero(&mut buffer);
 
             meta.size = meta.size.max(self.algo.ciphertext_size(offset + written));
             meta.modified = Some(chrono::Utc::now());

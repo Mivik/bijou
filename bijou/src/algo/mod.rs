@@ -14,12 +14,12 @@
 //
 
 mod ring_aead;
-mod xchacha20poly1305_ietf;
-mod xsalsa20;
+mod sodium_aead;
+mod sodium_stream;
 
 pub use ring_aead::*;
-pub use xchacha20poly1305_ietf::*;
-pub use xsalsa20::*;
+pub use sodium_aead::*;
+pub use sodium_stream::*;
 
 use crate::{Result, SecretBytes};
 

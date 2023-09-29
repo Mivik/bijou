@@ -15,27 +15,26 @@
 
 use super::{is_nil, AlgoKey, Algorithm};
 use crate::{
-    crypto::{cast_key, split_nonce_tag},
+    crypto::split_nonce_tag,
+    sodium::{stream, utils::rand_bytes},
     Result, SecretBytes,
 };
-use sodiumoxide::crypto::stream;
 
-/// XSalsa20 stream cipher.
-///
-/// Backed by libsodium.
-pub struct XSalsa20 {
+/// General wrapper for libsodium stream cipher algorithms.
+pub struct SodiumStream {
+    algo: &'static stream::Algorithm,
     block_size: u64,
 }
 
-impl XSalsa20 {
-    pub fn new(block_size: u64) -> Self {
-        Self { block_size }
+impl SodiumStream {
+    pub fn new(algo: &'static stream::Algorithm, block_size: u64) -> Result<Self> {
+        Ok(Self { algo, block_size })
     }
 }
 
-impl Algorithm for XSalsa20 {
+impl Algorithm for SodiumStream {
     fn header_size(&self) -> u64 {
-        stream::NONCEBYTES as u64
+        self.algo.nonce_len as _
     }
 
     fn content_size(&self) -> u64 {
@@ -47,43 +46,42 @@ impl Algorithm for XSalsa20 {
     }
 
     fn key_size(&self) -> usize {
-        stream::KEYBYTES
+        self.algo.key_len as _
     }
 
     fn key(&self, key: SecretBytes) -> Result<Box<dyn AlgoKey + Send + Sync>> {
-        Ok(Box::new(Key(key)))
+        Ok(Box::new(Key {
+            algo: self.algo,
+            key,
+        }))
     }
 }
 
-fn split(data: &mut [u8]) -> (&mut stream::Nonce, &mut [u8]) {
-    // Safety
-    //
-    // libsodium uses char* under the hood, which
-    // does not require any alignment guarantees.
-    let (nonce, data, _) = unsafe { split_nonce_tag::<stream::Nonce, ()>(data) };
-    (nonce, data)
+struct Key {
+    algo: &'static stream::Algorithm,
+    key: SecretBytes,
 }
-
-struct Key(SecretBytes);
 impl AlgoKey for Key {
     fn encrypt(&self, block: u64, buffer: &mut [u8]) -> Result<()> {
-        let (nonce, data) = split(buffer);
-        *nonce = stream::gen_nonce();
-        while is_nil(&nonce.0) {
-            *nonce = stream::gen_nonce();
+        let (nonce, data, _) = split_nonce_tag(buffer, self.algo.nonce_len, 0);
+
+        rand_bytes(nonce);
+        while is_nil(nonce) {
+            rand_bytes(nonce);
         }
 
-        stream::stream_xor_ic_inplace(data, nonce, block, cast_key(&self.0));
+        self.algo.xor_inplace_ic(data, nonce, block, &self.key)?;
 
         Ok(())
     }
 
     fn decrypt(&self, block: u64, buffer: &mut [u8]) -> Result<()> {
-        let (nonce, data) = split(buffer);
-        if is_nil(&nonce.0) {
+        let (nonce, data, _) = split_nonce_tag(buffer, self.algo.nonce_len, 0);
+
+        if is_nil(nonce) {
             data.fill(0);
         } else {
-            stream::stream_xor_ic_inplace(data, nonce, block, cast_key(&self.0));
+            self.algo.xor_inplace_ic(data, nonce, block, &self.key)?;
         }
 
         Ok(())
