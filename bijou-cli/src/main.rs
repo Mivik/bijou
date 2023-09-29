@@ -28,6 +28,23 @@ struct Args {
     command: Command,
 }
 
+fn limit_parser(s: &str) -> Result<Limit, &'static str> {
+    Ok(match s {
+        "interactive" | "i" => Limit::Interactive,
+        "moderate" | "m" => Limit::Moderate,
+        "sensitive" | "s" => Limit::Sensitive,
+        _ => {
+            if let Ok(val) = s.parse::<usize>() {
+                Limit::Custom(val)
+            } else {
+                return Err(
+                    "expected one of: interactive(i), moderate(m), sensitive(s), or a number",
+                );
+            }
+        }
+    })
+}
+
 #[derive(Subcommand)]
 enum Command {
     /// Create a new Bijou
@@ -38,6 +55,14 @@ enum Command {
         /// the path to the config file (JSON) to use
         #[arg(short, long)]
         config: Option<PathBuf>,
+
+        /// the operation limit of Argon2id
+        #[arg(long, value_parser = limit_parser)]
+        ops_limit: Option<Limit>,
+
+        /// the memory limit of Argon2id
+        #[arg(long, value_parser = limit_parser)]
+        mem_limit: Option<Limit>,
     },
 
     #[cfg(not(windows))]
@@ -94,7 +119,12 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     match args.command {
-        Command::Create { path, config } => {
+        Command::Create {
+            path,
+            config,
+            ops_limit,
+            mem_limit,
+        } => {
             let config = match config {
                 Some(path) => {
                     (|| -> Result<Config> { Ok(serde_json::from_reader(File::open(path)?)?) })()
@@ -113,8 +143,8 @@ fn main() -> Result<()> {
                 &path,
                 password.into_bytes(),
                 config,
-                Limit::Moderate,
-                Limit::Moderate,
+                ops_limit.unwrap_or(Limit::Moderate),
+                mem_limit.unwrap_or(Limit::Moderate),
             )?;
 
             info!("Bijou created at {}", path.display());
