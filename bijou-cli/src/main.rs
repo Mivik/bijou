@@ -132,6 +132,11 @@ fn main() -> Result<()> {
                 }
                 None => Config::default(),
             };
+            if path.exists() && (!path.is_dir() || path.read_dir()?.next().is_some()) {
+                Args::command()
+                    .error(ErrorKind::Io, "Destination is not empty")
+                    .exit();
+            }
 
             let password = rpassword::prompt_password("Enter password: ")?;
             if rpassword::prompt_password("Repeat: ")? != password {
@@ -152,9 +157,20 @@ fn main() -> Result<()> {
         #[cfg(not(windows))]
         Command::Mount {
             path,
-            mount_point: mountpoint,
+            mount_point,
             allow_other,
         } => {
+            if !path.is_dir() {
+                Args::command()
+                    .error(ErrorKind::Io, "Data directory does not exist")
+                    .exit();
+            }
+            if !mount_point.is_dir() {
+                Args::command()
+                    .error(ErrorKind::Io, "Mount point does not exist")
+                    .exit();
+            }
+
             let password = rpassword::prompt_password("Enter password: ")?;
             let bijou = Arc::new(Bijou::open(path, password.into_bytes())?);
             let fuse = bijou::BijouFuse::new(bijou);
@@ -162,7 +178,7 @@ fn main() -> Result<()> {
             if allow_other {
                 options.push(bijou::MountOption::AllowOther);
             }
-            let mut unmounter = fuse.mount(mountpoint, &options)?;
+            let mut unmounter = fuse.mount(mount_point, &options)?;
             ctrlc::set_handler(move || {
                 unmounter.unmount().expect("failed to unmount");
                 std::process::exit(0);
