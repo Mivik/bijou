@@ -15,6 +15,7 @@ version.workspace = true
 [dependencies]
 anyhow = { version = "1.0.75", features = ["backtrace"] }
 base64 = "0.21.4"
+bijou-rocksdb = "0.21.0"
 chrono = { version = "0.4.30", features = ["serde"] }
 dashmap = "5.5.3"
 fuser = { git = "https://github.com/Mivik/fuser", features = ["abi-7-21"], optional = true }
@@ -23,7 +24,6 @@ libsodium-sys-stable = "1.20.2"
 postcard = { version = "1.0.7", features = ["alloc"] }
 rand = "0.8.5"
 ring = "0.16.20"
-rocksdb = { git = "https://github.com/Mivik/rust-rocksdb" }
 serde = { version = "1.0.188", features = ["derive"] }
 serde_json = "1.0.106"
 smallvec = "1.11.0"

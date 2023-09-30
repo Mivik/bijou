@@ -228,8 +228,8 @@ impl Error {
             return libc::EIO;
         };
 
-        if let Some(err) = source.downcast_ref::<rocksdb::Error>() {
-            use rocksdb::ErrorKind::*;
+        if let Some(err) = source.downcast_ref::<bijou_rocksdb::Error>() {
+            use bijou_rocksdb::ErrorKind::*;
             match err.kind() {
                 NotFound => libc::ENOENT,
                 NotSupported => libc::ENOTSUP,

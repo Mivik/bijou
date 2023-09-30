@@ -193,6 +193,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64",
+ "bijou-rocksdb",
  "chrono",
  "dashmap",
  "fuser",
@@ -202,7 +203,6 @@ dependencies = [
  "postcard",
  "rand",
  "ring",
- "rocksdb",
  "serde",
  "serde_json",
  "smallvec",
@@ -224,6 +224,32 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "bijou-librocksdb-sys"
+version = "0.11.0+8.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bba91a772b95eaec1b8de97de9a2311561c7f02fd94e8e29e34310111f920e83"
+dependencies = [
+ "bindgen",
+ "bzip2-sys",
+ "cc",
+ "glob",
+ "libc",
+ "libz-sys",
+ "lz4-sys",
+ "zstd-sys",
+]
+
+[[package]]
+name = "bijou-rocksdb"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b2d674a33376dd4a12e28021b10cf3d8598b563f2037e5051cc405817b93f3e"
+dependencies = [
+ "bijou-librocksdb-sys",
+ "libc",
 ]
 
 [[package]]
@@ -947,21 +973,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "librocksdb-sys"
-version = "0.11.0+8.3.2"
-source = "git+https://github.com/Mivik/rust-rocksdb#5cda41fb225113385d58f7ae206cc12f8a255cca"
-dependencies = [
- "bindgen",
- "bzip2-sys",
- "cc",
- "glob",
- "libc",
- "libz-sys",
- "lz4-sys",
- "zstd-sys",
-]
-
-[[package]]
 name = "libsodium-sys-stable"
 version = "1.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1458,15 +1469,6 @@ name = "rle-decode-fast"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3582f63211428f83597b51b2ddb88e2a91a9d52d12831f9d08f5e624e8977422"
-
-[[package]]
-name = "rocksdb"
-version = "0.21.0"
-source = "git+https://github.com/Mivik/rust-rocksdb#5cda41fb225113385d58f7ae206cc12f8a255cca"
-dependencies = [
- "libc",
- "librocksdb-sys",
-]
 
 [[package]]
 name = "rpassword"

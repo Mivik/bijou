@@ -45,15 +45,15 @@ use crate::{
     },
     Context, ErrorKind, FileId, FileMeta, OpenOptions, Result, SecretBytes,
 };
+use bijou_rocksdb::{
+    DBIteratorWithThreadMode, DBPinnableSlice, DBWithThreadMode, Direction, IteratorMode,
+    ReadOptions, SingleThreaded, WriteBatch,
+};
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use ring::{
     error::Unspecified,
     hkdf::{self, KeyType, Prk},
-};
-use rocksdb::{
-    DBIteratorWithThreadMode, DBPinnableSlice, DBWithThreadMode, Direction, IteratorMode,
-    ReadOptions, SingleThreaded, WriteBatch,
 };
 use serde::{Deserialize, Serialize};
 use std::{

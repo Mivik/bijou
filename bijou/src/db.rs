@@ -14,9 +14,9 @@
 //
 
 use crate::{error::ResultExt, fs::FileId, Context, ErrorKind, Result, SecretBytes};
-use rocksdb::{
-    BlockBasedOptions, DBPinnableSlice, DBWithThreadMode, LogLevel, Options, ReadOptions,
-    SingleThreaded, WriteBatchWithTransaction, DB,
+use bijou_rocksdb::{
+    BlockBasedOptions, DBPinnableSlice, DBWithThreadMode, Env, IteratorMode, LogLevel, Options,
+    ReadOptions, SingleThreaded, WriteBatchWithTransaction, DB,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use smallvec::SmallVec;
@@ -56,7 +56,7 @@ mod cipher {
     pub const KEYBYTES: usize = XSALSA20.key_len;
 
     pub struct MyCipher(pub SecretBytes);
-    impl rocksdb::CustomCipher for MyCipher {
+    impl bijou_rocksdb::CustomCipher for MyCipher {
         fn encrypt_block(&self, _block_index: u64, data: &mut [u8], metadata: &mut [u8]) -> bool {
             while is_nil(metadata) {
                 utils::rand_bytes(metadata);
@@ -82,14 +82,14 @@ impl Database {
 
     pub fn open(path: impl AsRef<Path>, key: Option<SecretBytes>) -> Result<Self> {
         let env = Arc::new(if let Some(key) = key {
-            rocksdb::Env::encrypted(
+            Env::encrypted(
                 Box::new(cipher::MyCipher(key)),
                 cipher::METADATA_SIZE,
                 cipher::BLOCK_SIZE,
             )
             .context("failed to create encrypted RocksDB environment")?
         } else {
-            rocksdb::Env::new().context("failed to create RocksDB environment")?
+            Env::new().context("failed to create RocksDB environment")?
         });
 
         // TODO increase parallelism?
@@ -99,7 +99,7 @@ impl Database {
         options.set_log_level(LogLevel::Fatal);
         options.set_use_adaptive_mutex(true);
         options.set_env(&env);
-        options.set_compression_type(rocksdb::DBCompressionType::None);
+        options.set_compression_type(bijou_rocksdb::DBCompressionType::None);
         let mut block_opts = BlockBasedOptions::default();
         block_opts.set_ribbon_filter(20.0);
         options.set_block_based_table_factory(&block_opts);
@@ -256,7 +256,7 @@ impl<T> DatabaseKey<T> {
         &self,
         lower: &[u8],
         upper: &[u8],
-    ) -> impl Iterator<Item = Result<(Box<[u8]>, Box<[u8]>), rocksdb::Error>> + '_ {
+    ) -> impl Iterator<Item = Result<(Box<[u8]>, Box<[u8]>), bijou_rocksdb::Error>> + '_ {
         let mut opts = ReadOptions::default();
 
         let mut upper_key = self.key.to_vec();
@@ -266,7 +266,7 @@ impl<T> DatabaseKey<T> {
         let mut lower_key = self.key.to_vec();
         lower_key.extend_from_slice(lower);
         self.db.iterator_opt(
-            rocksdb::IteratorMode::From(&lower_key, rocksdb::Direction::Forward),
+            IteratorMode::From(&lower_key, bijou_rocksdb::Direction::Forward),
             opts,
         )
     }
