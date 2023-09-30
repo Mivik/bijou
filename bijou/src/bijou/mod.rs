@@ -1014,7 +1014,7 @@ impl Bijou {
         cb: impl FnOnce(Result<Option<DBPinnableSlice>>) -> R,
     ) -> R {
         if self.config.disable_xattr_gets {
-            return cb(Err(anyhow!(@Unsupported)));
+            return cb(Err(anyhow!(@Unsupported "xattr gets are disabled")));
         }
         cb(self
             .get_key(id)
