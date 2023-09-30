@@ -10,7 +10,7 @@ categories = ["cryptography", "filesystem"]
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/Mivik/bijou"
-version = "0.1.0"
+version = "0.0.1"
 
 [profile.release]
 opt-level = 2
