@@ -269,6 +269,18 @@ impl BijouFuse {
 
 #[doc(hidden)]
 impl Filesystem for BijouFuse {
+    fn init(
+        &mut self,
+        _req: &Request,
+        config: &mut fuser::KernelConfig,
+    ) -> Result<(), libc::c_int> {
+        use fuser::consts::*;
+        let _ = config.add_capabilities(FUSE_DO_READDIRPLUS);
+        let _ = config.add_capabilities(FUSE_READDIRPLUS_AUTO);
+
+        Ok(())
+    }
+
     fn lookup(&mut self, _req: &Request, parent: u64, name: &OsStr, reply: fuser::ReplyEntry) {
         let _span = begin_span("lookup");
         let bijou = &self.bijou;
