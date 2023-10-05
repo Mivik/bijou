@@ -208,7 +208,6 @@ dependencies = [
  "smallvec",
  "threadpool",
  "tracing",
- "uuid",
 ]
 
 [[package]]
