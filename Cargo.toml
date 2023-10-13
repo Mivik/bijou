@@ -4,7 +4,7 @@ resolver = "2"
 
 [workspace.package]
 authors = ["Mivik <mivikq@gmail.com>"]
-description = "Bijou is a tiny yet fast encrypted file system."
+description = "Bijou is a tiny embeddable encrypted file system."
 keywords = ["crypto", "fuse", "filesystem", "storage", "security"]
 categories = ["cryptography", "filesystem"]
 edition = "2021"
