@@ -15,7 +15,7 @@ version.workspace = true
 [dependencies]
 anyhow = { version = "1.0.75", features = ["backtrace"] }
 base64 = "0.21.4"
-bijou-rocksdb = "0.21.0"
+bijou-rocksdb = "0.21.1"
 chrono = { version = "0.4.30", features = ["serde"] }
 dashmap = "5.5.3"
 fuser = { version = "0.13.0", features = ["abi-7-21"], optional = true }
