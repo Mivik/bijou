@@ -1,6 +1,9 @@
 # Bijou ✨💎✨
 
-Bijou (['bi:ʒu], French for "jewel") is a tiny yet fast encrypted filesystem, built upon [RocksDB](https://github.com/facebook/rocksdb).
+[![Crates.io](https://img.shields.io/crates/v/bijou)](https://crates.io/crates/bijou)
+[![docs.rs](https://img.shields.io/docsrs/bijou)](https://docs.rs/bijou)
+
+Bijou (['bi:ʒu], French for "jewel") is a tiny embeddable encrypted filesystem, built upon [RocksDB](https://github.com/facebook/rocksdb).
 
 Bijou provides a FUSE interface, as well as Rust API (`bijou-core`) to manipulate the filesystem.
 
@@ -8,7 +11,9 @@ Bijou provides a FUSE interface, as well as Rust API (`bijou-core`) to manipulat
 
 The initial motivation of Bijou is to provide access to encrypted filesystem everywhere, without extra requirement for the host system. Most of currently available encrypted filesystems just rely on the underlying filesystem to do the most of the work (directory structure, filenames, metadata, xattrs, etc.), which both limits the portability and compromises the security.
 
-Bijou is developed with safety and performance in mind. Almost all metadata is stored in a RocksDB database, which is patched to support at-rest encryption. Because of that, Bijou poses minimum requirement on the underlying filesystem. In addition, an abstraction of the storage layer makes it possible to store file contents nearly everywhere, including local file system, OpenDAL (experimental) or even RocksDB itself.
+Bijou is developed with safety and performance in mind. Almost all metadata is stored in a RocksDB database, which is extended to support at-rest encryption. Because of that, Bijou poses minimum requirement on the underlying filesystem (specifically, being able to store random-accessible regular files in directories is all we need).
+
+In addition, an abstraction of the storage layer makes it possible to store file contents nearly everywhere, including local file system, OpenDAL (experimental) or even RocksDB itself.
 
 ## **Warning**
 
@@ -54,7 +59,7 @@ Bijou is still in its early stage, and there are many things to do. If you're in
 ## Installation
 
 ```bash
-cargo install --git https://github.com/Mivik/bijou
+cargo install bijou-cli
 ```
 
 ## Usage
