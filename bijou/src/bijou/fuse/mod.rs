@@ -79,9 +79,7 @@ fn ptr_to_file(ptr: u64) -> &'static RwLock<LowLevelFile> {
 
 fn drop_as<T>(ptr: u64) {
     unsafe {
-        let ptr = ptr as *mut T;
-        ptr.drop_in_place();
-        std::alloc::dealloc(ptr as _, std::alloc::Layout::new::<T>());
+        drop(Box::from_raw(ptr as *mut T));
     }
 }
 
@@ -507,11 +505,11 @@ impl Filesystem for BijouFuse {
         let bijou = &self.bijou;
         match bijou.read_dir(self.shared.get_id(inode)) {
             Ok(iter) => reply.opened(
-                Box::leak(Box::new(DirHandle {
+                Box::into_raw(Box::new(DirHandle {
                     iter,
                     buf: Vec::new(),
                     filled: false,
-                })) as *mut _ as u64,
+                })) as u64,
                 FOPEN_KEEP_CACHE | (1 << 3),
             ),
             Err(err) => reply.error(err.to_libc()),
