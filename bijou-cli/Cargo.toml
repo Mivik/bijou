@@ -1,5 +1,6 @@
 [package]
 name = "bijou-cli"
+version = "0.0.1"
 
 authors.workspace = true
 description.workspace = true
@@ -8,7 +9,6 @@ categories.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-version.workspace = true
 
 [[bin]]
 name = "bijou"
