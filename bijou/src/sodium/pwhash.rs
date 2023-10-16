@@ -87,23 +87,6 @@ impl Algorithm {
     }
 }
 
-pub const ARGON2_I13: Algorithm = Algorithm {
-    salt_len: crypto_pwhash_argon2i_SALTBYTES as _,
-
-    ops_limits: [
-        crypto_pwhash_argon2i_OPSLIMIT_INTERACTIVE as _,
-        crypto_pwhash_argon2i_OPSLIMIT_MODERATE as _,
-        crypto_pwhash_argon2i_OPSLIMIT_SENSITIVE as _,
-    ],
-    mem_limits: [
-        crypto_pwhash_argon2i_MEMLIMIT_INTERACTIVE as _,
-        crypto_pwhash_argon2i_MEMLIMIT_MODERATE as _,
-        crypto_pwhash_argon2i_MEMLIMIT_SENSITIVE as _,
-    ],
-
-    derive_key: crypto_pwhash_argon2id,
-};
-
 pub const ARGON2_ID13: Algorithm = Algorithm {
     salt_len: crypto_pwhash_argon2id_SALTBYTES as _,
 

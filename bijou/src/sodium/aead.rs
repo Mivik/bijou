@@ -153,15 +153,6 @@ impl Algorithm {
     }
 }
 
-pub const AES_256_GCM: Algorithm = Algorithm {
-    key_len: crypto_aead_aes256gcm_KEYBYTES as _,
-    nonce_len: crypto_aead_aes256gcm_NPUBBYTES as _,
-    tag_len: crypto_aead_aes256gcm_ABYTES as _,
-
-    encrypt: crypto_aead_aes256gcm_encrypt_detached,
-    decrypt: crypto_aead_aes256gcm_decrypt_detached,
-};
-
 pub const XCHACHA20_POLY1305_IETF: Algorithm = Algorithm {
     key_len: crypto_aead_xchacha20poly1305_ietf_KEYBYTES as _,
     nonce_len: crypto_aead_xchacha20poly1305_ietf_NPUBBYTES as _,
