@@ -36,6 +36,11 @@ impl BijouFs {
         Self { bijou }
     }
 
+    /// Returns the underlying [`Bijou`] instance.
+    pub fn inner(&self) -> &Bijou {
+        &self.bijou
+    }
+
     /// Creates a new, empty directory at the provided path.
     ///
     /// This corresponds to [`std::fs::create_dir`].
